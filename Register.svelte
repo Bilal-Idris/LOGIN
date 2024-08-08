@@ -1,136 +1,105 @@
 <script>
+  import { onMount } from 'svelte';
+  import {navigate} from 'svelte-routing';
+  import { login, logout, isAuthenticated, user } from '../stores/auth.js';
+  
+  let username = '';
+  let firstname = '';
+  let lastname = '';
+  let dob = '';
   let email = '';
-  let confirmEmail = '';
+  let address = '';
   let password = '';
-  let message = '';
+  let loggedIn = false;
+  let errorMessage = '';
 
-  function register() {
-    const users = JSON.parse(localStorage.getItem('users')) || [];
-    const userExists = users.some(user => user.email === email);
+  $: loggedIn = $isAuthenticated;
 
-    if (userExists) {
-      message = 'User already exists.';
-    } else if (email !== confirmEmail) {
-      message = 'Emails do not match.';
-    } else {
-      users.push({ email, password });
-      localStorage.setItem('users', JSON.stringify(users));
-      message = 'Registration successful!';
+  function handleSubmit(event) {
+    event.preventDefault();
+    
+    fetch('http://localhost:3000/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, firstname, lastname, dob, email, address, password})
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log("data",data)
+      if (data.success) {
+        login(data.user.email);
+        errorMessage = 'logged in successfully';
+        navigate('/');
+      } else {
+        errorMessage = data.message;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      errorMessage = 'An error occurred. Please try again.';
+    });
+  }
+
+  function handleLogout() {
+    logout();
+    username = '';
+    password = '';
+  }
+
+  function checkLoginStatus() {
+    const user = localStorage.getItem('user');
+    if (user) {
+      loggedIn = true;
     }
   }
+
+  onMount(checkLoginStatus);
 </script>
 
-<h2>Register</h2>
-<form on:submit|preventDefault={register}>
-  <div class="form-group">
-    <label for="email">Email:</label>
-    <input
-      id="email"
-      type="email"
-      bind:value={email}
-      required
-      placeholder="Enter your email"
-    />
+
+{#if loggedIn}
+  <div class="login-container">
+    <h1>Welcome, {JSON.parse(localStorage.getItem('user')).email}</h1>
+    <button on:click={handleLogout}>LOGOUT</button>
   </div>
-  
-  <div class="form-group">
-    <label for="confirmEmail">Confirm Email:</label>
-    <input
-      id="confirmEmail"
-      type="email"
-      bind:value={confirmEmail}
-      required
-      placeholder="Confirm your email"
-    />
+{:else}
+  <div class="login-container">
+    <h1>Register</h1>
+    {#if errorMessage}
+      <p class="error-message">{errorMessage}</p>
+    {/if}
+    <form on:submit={handleSubmit}>
+      <div class="input-group">
+        <span class="icon">&#128100;</span>
+        <input type="text" placeholder="firstname" bind:value={firstname} required>
+      </div>
+      <div class="input-group">
+          <span class="icon">&#128100;</span>
+          <input type="text" placeholder="lastname" bind:value={lastname} required>
+        </div>
+        <div class="input-group">
+          <span class="icon">&#128100;</span>
+          <input type="text" placeholder="dob" bind:value={dob} required>
+        </div>
+        <div class="input-group">
+            <span class="icon">&#128100;</span>
+            <input type="text" placeholder="email" bind:value={email} required>
+          </div>
+          <div class="input-group">
+              <span class="icon">&#128100;</span>
+              <input type="text" placeholder="address" bind:value={address} required>
+            </div>
+            <div class="input-group">
+              <span class="icon">&#128100;</span>
+              <input type="text" placeholder="username" bind:value={username} required>
+            </div>
+      <div class="input-group">
+        <span class="icon">&#128274;</span>
+        <input type="password" placeholder="Password" bind:value={password} required>
+      </div>
+      <button type="submit">Register</button>
+    </form>
   </div>
-  
-  <div class="form-group">
-    <label for="password">Password:</label>
-    <input
-      id="password"
-      type="password"
-      bind:value={password}
-      required
-      placeholder="Enter your password"
-    />
-  </div>
-  
-  <button type="submit">Register</button>
-</form>
-
-<p class="message">{message}</p>
-
-<style>
-  /* Background Styling */
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    background-color: #8BC34A;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  /* Form Styling */
-  form {
-    background-color: #71C15C;
-    padding: 2em;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    max-width: 300px;
-    width: 100%;
-  }
-
-  h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 24px;
-    color: #fff;
-  }
-
-  .form-group {
-    margin-bottom: 1.5em;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 0.5em;
-    font-weight: bold;
-    color: #fff;
-  }
-
-  input {
-    width: 100%;
-    padding: 10px 10px;
-    font-size: 16px;
-    border: none;
-    background-color: #2A3742;
-    color: #ccc;
-    border-radius: 5px;
-  }
-
-  button {
-    width: 100%;
-    padding: 10px;
-    font-size: 18px;
-    color: white;
-    background-color: #FF5722;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-
-  button:hover {
-    background-color: #e64a19;
-  }
-
-  .message {
-    text-align: center;
-    margin-top: 1em;
-    color: white;
-    font-weight: bold;
-  }
-</style>
+{/if}
